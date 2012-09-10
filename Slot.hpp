@@ -153,6 +153,7 @@ template <class TMsg, class TObj, void (TObj::*TMethod)(typename TMsg::Ptr, Link
     A Slot is a (member) variable bound to a method. It requires to specify as
     template argument the class of Message it may accept and the method it is
     bound to.
+
     The slot variable must be initialized with a pointer to the object
     owning the method to call.
 
@@ -194,24 +195,6 @@ template <class TMsg, class TObj, void (TObj::*TMethod)(typename TMsg::Ptr, Link
     Message types will always match the expected type of the slot method. This
     avoids the dynamic cast and resulting performance penalty.
 
-    Normally a slot doesn't need to be initialized. The pointer on the owning
-    Action object it needs to call the slot method is set when the first
-    connection to it is established. But if a call to the slot operator () is to
-    be performed before a connection to it is established, then the slot
-    requires to be initialized as in the following example:
-
-    @code
-        class MyMessage ... ;
-        class MyClass
-        {
-            MyClass(...) : ... m_slot(this),... {...}
-            ...
-            void mySlotMethod( MyMessage::Ptr m, Link * l ) { ... }
-            ...
-            Slot<MyMessage, MyAction, &MyAction::mySlotMethod> m_slot;
-            ...
-        };
-    @endcode
 */
 class Slot : public AnySlot
 {
@@ -262,6 +245,94 @@ private:
     {
         if( msg && obj )
             (obj->*TMethod)(boost::static_pointer_cast<TMsg>(msg), link);
+    }
+};
+
+template <class TMsg, void (*TFunction)(typename TMsg::Ptr, Link*)>
+/*! @class Slot  Slots bound to a free function.
+
+    A Slot is a variable bound to a free function. It requires to
+    specify as template argument the class of Message it may accept and the
+    function it is bound to. The function will be called for each Message
+    received by the Slot.
+
+    The slot variable does not need to be initialized.
+
+    @code
+
+        // The function called for each message received by the slot
+        void mySlotFunction( MyMessage::Ptr m, Link * l ) { ... }
+
+        // The slot to which Signals may connect too
+        SlotFunction<MyMessage, &mySlotFunction> slot;
+
+    @endcode
+
+    A connected Slot will have its bound function invoked for each received
+    Message that matches the its accepted Message type.
+
+    When a Signal emits a Message, its is queued in the Message::emitted queue.
+    It is the call of the Message::processNext() static method that consume
+    the next Message in the queue and calls the corresponding Slot function.
+    It returns false when the queue is empty.
+
+    A static cast will be performed on the Message if the statically defined
+    Message type emitted by the connected Signal matches the polymorphic rule.
+    Otherwise a dynamic cast is performed. The slot function will not be called
+    if the dynamic cast on the Message returns a nullptr.
+
+    It is possible to establish a connection Link that will always perform a
+    static cast. This should be only done if the user can ensure that the
+    Message types will always match the expected type of the slot function.
+    This avoids the dynamic cast and resulting performance penalty.
+*/
+class SlotFunction : public AnySlot
+{
+public:
+
+    /// Type of the current class
+    typedef SlotFunction<TMsg,TFunction> MyType;
+
+    /**
+     * @brief Constructor initializing the Slot
+     *
+     * @param obj Pointer on the object owning the Slot (this)
+     */
+    SlotFunction() : AnySlot( TMsg::Type() )
+    {
+        m_dynamicCastFunction = &MyType::dynamicCastFunction;
+        m_staticCastFunction = &MyType::staticCastFunction;
+    }
+
+private:
+
+    /**
+     * @brief Wrapper of Slot method call with dynamic cast of Message argument
+     *
+     * @param obj Pointer on the object owning the Slot
+     * @param msg shared_ptr on the Message to pass as Slot method argument
+     * @param link pointer on Link through which the Message was sent or
+     *             nullptr if unspecified or none
+     */
+    static void dynamicCastFunction( typename Message::Ptr msg, Link* link )
+    {
+        typename TMsg::Ptr m = boost::dynamic_pointer_cast<TMsg>(msg);
+        if( m )
+            (*TFunction)( m, link );
+    }
+
+    /**
+     * @brief Wrapper of Slot method call with static cast of Message argument
+     *
+     * @param obj Pointer on the object owning the Slot
+     * @param msg shared_ptr on the Message to pass as Slot method argument
+     * @param link pointer on Link through which the Message was sent or
+     *             nullptr if unspecified or none
+     */
+    static void staticCastFunction( typename Message::Ptr msg, Link* link )
+    {
+        if( msg )
+            (*TFunction)( boost::static_pointer_cast<TMsg>(msg), link );
     }
 };
 

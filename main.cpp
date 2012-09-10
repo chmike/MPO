@@ -228,6 +228,14 @@ public:
 };
 const TypeDef Pong::m_type( "Pong", &Action::Type() );
 
+int nbrBallCatched = 0;
+void catchBall( Ball::Ptr ball, Link * )
+{
+    if( ball )
+        nbrBallCatched++;
+}
+
+
 int main()
 {
     Message::Ptr mm( new Message() );
@@ -460,6 +468,53 @@ int main()
             exit(1);
         }
         cout << "Ok" << endl;
+
+        cout << "Test free functions    : ";
+
+        SlotFunction<Ball,&catchBall> slotBall;
+        Signal<Ball> signalBall;
+
+        if( nbrBallCatched != 0 )
+        {
+            cout << "Failed!" << endl;
+            cout << "   nbrBallCatched counter is not 0"
+                 << ". Found " << nbrBallCatched << endl;
+            exit(1);
+        }
+
+        // Establish a direct connecting between signal and slot
+        Link::connect( &signalBall, &slotBall );
+
+        while( Message::processNext() );
+        signalBall.emit( ball );
+        while( Message::processNext() );
+
+        if( nbrBallCatched != 1 )
+        {
+            cout << "Failed!" << endl;
+            cout << "   nbrBallCatched counter is not 1"
+                 << ". Found " << nbrBallCatched << endl;
+            exit(1);
+        }
+
+        Link::disconnect( &signalBall, &slotBall );
+
+        // Retest using named Signal and slot
+        slotBall.setName( "Ball slot" );
+        signalBall.setName( "Ball signal" );
+        Link::connect( "Ball signal", "Ball slot" );
+        while( Message::processNext() );
+        signalBall.emit( ball );
+        while( Message::processNext() );
+        if( nbrBallCatched != 2 )
+        {
+            cout << "Failed!" << endl;
+            cout << "   nbrBallCatched counter is not 2"
+                 << ". Found " << nbrBallCatched << endl;
+            exit(1);
+        }
+        cout << "Ok" << endl;
+
 
         // destroy all objects
         Action::clearActions();
