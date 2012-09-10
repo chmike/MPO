@@ -30,7 +30,7 @@ Link::Link( AnySignal& signal, AnySlot& slot, bool forceStatic ) :
 {
     // Pick the slot function performing a static or dynamic cast on the message
     if( forceStatic ||
-            m_signal->messageType().isSameOrSubtypeOf(m_slot->messageType()) )
+            m_signal->messageType().isSameOrSubtypeOf(&m_slot->messageType()) )
         m_slotFunction = m_slot->getStaticCastFunction();
     else
         m_slotFunction = m_slot->getDynamicCastFunction();

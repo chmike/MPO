@@ -9,23 +9,26 @@ namespace MPO
 
 
 /**
-    @brief Link class to connect a Signal with a Slot
-
-    Deleting a Link class instances removes the connection.
+    @brief Link instance of a connection from a Signal to a Slot
 
     Link connections are established by using the static connect() method
-    using the Action, Signal and Slot names as references.
+    by using a reference to the Signal and Slot as parameter.
+    It is also possible to establish a connection by using a name associated
+    to the Signal or the Slo to connect.
 
-    The intended use is to establish the Link connections based on a
-    configuration description using the names to be readable and editable by a
-    user.
+    The later is intented to be used when the connections are defined in
+    a configuration files and each Signal and Slot is identified by a
+    unique name in the program.
 
-    The following example shows how to establish a connection Link.
-    The Ping Action object has a Signal named "output" and the Pong Action
-    object has a slot named "input".
+    Deleting a Link object removes the connection.
 
+    The following example shows how to establish a connection Link between
+    a Signal named "output" and a Slot named "input" of two instances of
+    the class MyClass named respectively "Ping" and "Pong".
+
+    This is the definition part.
     @code
-        class MyMessage : public Message
+        class Ball : public Message
         {
             ...
         };
@@ -36,20 +39,24 @@ namespace MPO
             MyClass( const std::string& name ) :
                 m_name(name), m_input(this)
             {
+                // Register the Slot and Signal names
                 m_input.setName( name + "::input" );
                 m_output.setName( name + "::output" );
             }
 
             // input method processing Message received by bound Slot
-            void input( MyMessage::Ptr m, Link* l ) { ... }
+            void input( Ball::Ptr m, Link* l ) { ... }
 
             // input Slot bound to the input method
-            Slot<MyMessage, MyClass, &MyClass::input> m_input;
+            Slot<Ball, MyClass, &MyClass::input> m_input;
 
             // output Signal
-            Signal<MyMessage> m_output;
+            Signal<Ball> m_output;
         };
     @endcode
+
+    This is the code instatiating the Ping and Pong instances of MyClass
+    and the establishment of the connection using the Slot and Signal names.
 
     @code
         // Instantiate an instance named ping
@@ -62,7 +69,8 @@ namespace MPO
         Link::connect( "Ping::output", "Pong::input");
     @endcode
 
-    Every Message emitted by Ping.m_output will now be processed by the Pong::input method.
+    Every Message emitted by Ping.m_output will now be processed by the
+    Pong::input method.
 
     @see Slot
     @see Signal

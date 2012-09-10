@@ -33,6 +33,7 @@ class Link;
     class subtype Ptr as an alias of shared_ptr<>.
 
     The following example shows how to define the class type and the Ptr type.
+    @See TypeDef
 
     @code
         class MyMessage : public Message
@@ -62,13 +63,15 @@ class Link;
     before it can be emitted by a Signal as shown in the following example.
 
     @code
+        // Assuming we have a Signal start connected to some Slot.
         Signal<MyMessage> start;
-        Link::connect( start, "targetObject", "slot" );
+        start.setName( "start" );
+        Link::connect( "start", "..." );
 
+        // A new Message must be assigned to a shared_ptr (Ptr) to be emitted
         MyMessage::Ptr msg( new MyMessage( ... ) );
         start.emit( msg );
     @endcode
-
 
 */
 class Message : public boost::enable_shared_from_this<Message>
@@ -84,29 +87,35 @@ public:
     /// Define Message smart pointer type
     typedef boost::shared_ptr<Message> Ptr;
 
+    /// Define the Message notifier call back function type
+    typedef boost::function<void ()> MessageNotifier;
+
     /**
-     * @brief Return a smart pointer on instance
+     * @brief Return a copy of the shared_ptr on the instance
      *
-     * After calling this method, the instance won't be deleted by a call to
-     * Action::clearActions() unless the returned shared pointer is deleted.
+     * This requires that the newly instantiated Message was assigned
+     * to a shared_ptr and at least one still exists.
      *
-     * @return Shared pointer on instance
+     * @return shared_ptr copy on the instance
      */
     Ptr getPtr() { return shared_from_this(); }
 
     /**
-     * @brief Return user specified typed shared pointer on instance
+     * @brief Return casted shared_ptr on the Message instance
      *
-     * After calling this method, the instance won't be deleted by a call to
-     * Action::clearActions() unless the returned shared pointer is deleted.
+     * This requires that the newly instantiated Message was assigned
+     * to a shared_ptr and at least one still exists. This call make it
+     * possible to cast the returned pointer to a user defined Message
+     * sub class.
      *
-     * @return Shared pointer on typed instance or nullptr
-     *         if the given template type doesn't match the instance type
+     * @return shared_ptr on typed instance or nullptr if the instance is not
+     *         of the same class of a sub class of the class provided as
+     *         template argument
      */
-    template <class TAction>
-    typename TAction::Ptr getPtr()
+    template <class TMessage>
+    typename TMessage::Ptr getPtr()
     {
-        return boost::dynamic_pointer_cast<TAction>( shared_from_this() );
+        return boost::dynamic_pointer_cast<TMessage>( shared_from_this() );
     }
 
     /**
@@ -130,12 +139,26 @@ public:
      */
     static bool processNext() { return emitted.processNext(); }
 
+    /**
+     * @brief set the Message queuing notification call back function
+     *
+     * If a message notification call back was already set, it will be
+     * replaced by the new one. Passing 0 as argument will clear any
+     * message notification call back that was previously set.
+     *
+     * @param messageNotifier a function pointer on the message notifier
+     *                        callback function or 0 to clear an existing
+     *                        callback.
+     */
+    void setMessageNotifier( MessageNotifier messageNotifier )
+    {
+        emitted.setMessageNotifier( messageNotifier );
+    }
+
+
 protected:
 
-    /**
-     * @brief Queue of emitted Message pending to be processed
-     *
-     */
+    /// Queue of emitted Message pending to be processed
     class Emitted
     {
     public:
@@ -143,10 +166,7 @@ protected:
         /// Define the Message notifier call back function type
         typedef boost::function<void ()> MessageNotifier;
 
-        /**
-         * @brief Pending Message entry
-         *
-         */
+        /// Pending Message entry
         struct Entry
         {
             /**
@@ -161,7 +181,7 @@ protected:
             Entry() : link(0) {}
 
             Message::Ptr msg; ///< Pending Message
-            Link* link; ///< Link traversed by Message
+            Link* link;       ///< Link traversed by Message
         };
 
         /**
@@ -250,7 +270,7 @@ protected:
     private:
         /// Define the Message queue type
         typedef std::list<Entry> Queue;
-        Queue m_queue; ///< The Message entry queue
+        Queue m_queue;            ///< The Message entry queue
         MessageNotifier m_notify; ///< Message notifier
     };
 

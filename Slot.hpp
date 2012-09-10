@@ -9,9 +9,6 @@
 
 #include "Message.hpp"
 
-// TODO Store names in the Slot to optimize identification and cleaning references
-
-
 
 namespace MPO
 {
@@ -21,11 +18,8 @@ class AnySlot;
 /// Link set definition
 typedef std::set<Link*> LinkSet;
 
-/// Signal directory definition
+/// Slot directory definition
 typedef std::map<std::string, AnySlot*> SlotMap;
-
-/// Name set definition
-typedef std::set<std::string> NameSet;
 
 
 /*! The class AnySlot is the base class of all Slot classes
@@ -93,10 +87,17 @@ public:
             m_slotMap[m_name = name] = this;
     }
 
+    /// Remove the Slot name from the global Slot map and clears name
+    void unregisterName()
+    {
+        m_slotMap.erase( m_name );
+        m_name = "";
+    }
+
     /**
-     * @brief Return the name of the Slot
+     * @brief Return the name of the Slot or "" if none
      *
-     * @return the name of the Slot
+     * @return the name of the Slot or "" if none
      */
     const std::string& name() const { return m_name; }
 
@@ -138,24 +139,12 @@ protected:
      */
     void disconnect( Link& link ) { m_links.erase( &link ); }
 
-    /// Remove the Slot name from the global Slot map and clears name
-    void unregisterName()
-    {
-        m_slotMap.erase( m_name );
-        m_name = "";
-    }
-
-    const TypeDef& m_msgType; ///< Class of Message accepted by Slot
-
+    const TypeDef& m_msgType;       ///< Class of Message accepted by Slot
     Function m_dynamicCastFunction; ///< Slot method with dynamic cast of Message
-
-    Function m_staticCastFunction; ///< Slot method with static cast of Message
-
-    LinkSet m_links; ///< Set of connected links
-
-    std::string m_name; ///< Name assigned to the Slot
-
-    static SlotMap m_slotMap; ///< Global Slot map
+    Function m_staticCastFunction;  ///< Slot method with static cast of Message
+    LinkSet m_links;                ///< Set of connected links
+    std::string m_name;             ///< Name assigned to the Slot
+    static SlotMap m_slotMap;       ///< Global Slot map
 };
 
 template <class TMsg, class TObj, void (TObj::*TMethod)(typename TMsg::Ptr, Link*)>
@@ -164,6 +153,8 @@ template <class TMsg, class TObj, void (TObj::*TMethod)(typename TMsg::Ptr, Link
     A Slot is a (member) variable bound to a method. It requires to specify as
     template argument the class of Message it may accept and the method it is
     bound to.
+    The slot variable must be initialized with a pointer to the object
+    owning the method to call.
 
     @code
         class MyClass ...
@@ -185,14 +176,13 @@ template <class TMsg, class TObj, void (TObj::*TMethod)(typename TMsg::Ptr, Link
         };
     @endcode
 
-    A connected Slot will have their bound slot method invoked when a
-    Message is received that matches the expected message type.
+    A connected Slot will have their bound slot method invoked for each
+    received Message that matches the accepted type.
 
     When a Signal emits a Message, its is queued in the Message::emitted queue.
     It is the call of the Message::processNext() static method that consume
     the next Message in the queue and calls the corresponding Slot method.
     It returns false when the queue is empty.
-
 
     A static cast will be performed on the Message if the statically defined
     Message type emitted by the connected Signal matches the polymorphic rule.
@@ -211,13 +201,14 @@ template <class TMsg, class TObj, void (TObj::*TMethod)(typename TMsg::Ptr, Link
     requires to be initialized as in the following example:
 
     @code
-        class MyAction ...
+        class MyMessage ... ;
+        class MyClass
         {
-            MyAction(...) : Action(...), ... m_slotOne(this),... {...}
+            MyClass(...) : ... m_slot(this),... {...}
             ...
             void mySlotMethod( MyMessage::Ptr m, Link * l ) { ... }
             ...
-            Slot<MyAction, MyMessage, &MyAction::mySlotMethod> m_slotOne;
+            Slot<MyMessage, MyAction, &MyAction::mySlotMethod> m_slot;
             ...
         };
     @endcode

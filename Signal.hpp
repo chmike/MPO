@@ -7,8 +7,6 @@
 #include "Message.hpp"
 
 
-// TODO Store names in the Signal to optimize identification and cleaning references
-
 
 namespace MPO
 {
@@ -63,10 +61,17 @@ public:
             m_signalMap[m_name = name] = this;
     }
 
+    /// Remove the Signal name from the global Signal map and clears name
+    void unregisterName()
+    {
+        m_signalMap.erase( m_name );
+        m_name = "";
+    }
+
     /**
-     * @brief Return the name of the Signal
+     * @brief Return the name of the Signal or "" if none
      *
-     * @return the name of the Signal
+     * @return the name of the Signal or "" if none
      */
     const std::string& name() const { return m_name; }
 
@@ -127,19 +132,9 @@ protected:
     bool isConnected( AnySlot &slot )
         { return m_links.find( &slot ) != m_links.end(); }
 
-    /// Remove the Signal name from the global Signal map and clears name
-    void unregisterName()
-    {
-        m_signalMap.erase( m_name );
-        m_name = "";
-    }
-
-    LinkMap m_links; ///< Map of connected links
-
-    const TypeDef& m_msgType; ///< Class of Message emitted by the Signal
-
-    std::string m_name; ///< Name assigned to the Signal
-
+    LinkMap m_links;              ///< Map of connected links
+    const TypeDef& m_msgType;     ///< Class of Message emitted by the Signal
+    std::string m_name;           ///< Name assigned to the Signal
     static SignalMap m_signalMap; ///< Global Signal map
 };
 
@@ -194,10 +189,7 @@ public:
      *
      * @param msg is shared_ptr on Message to emit
      */
-    void emit( typename TMsg::Ptr msg )
-    {
-        AnySignal::emit( msg );
-    }
+    void emit( typename TMsg::Ptr msg ) { AnySignal::emit( msg ); }
 };
 
 } // namespace MPO

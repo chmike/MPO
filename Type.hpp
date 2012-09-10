@@ -79,55 +79,48 @@ namespace MPO {
 class TypeDef
 {
 public:
-    //! Constructor
-/**
- * @brief
- *
- * @param n
- * @param p
- */
-    TypeDef( std::string n, const TypeDef* p = nullptr )
-        : m_name(n), m_parent(p) {}
-
-    //! Return true if this type is same or subtype of type t
     /**
-     * @brief
+     * @brief Constructor
      *
-     * @param type
-     * @return bool
+     * @param name Name of the type
+     * @param ptr Pointer on the parent class TypeDef or nullptr if none
      */
-    bool isSameOrSubtypeOf( const TypeDef& type ) const
+    TypeDef( const std::string& name, const TypeDef* ptr = nullptr )
+        : m_name(name), m_parent(ptr) {}
+
+    /**
+     * @brief Return true if this type is same or subtype of type
+     *
+     * @param type TypeDef of the class to compare with
+     * @return true if this type is same or subtype of type
+     */
+    bool isSameOrSubtypeOf( const TypeDef* type ) const
     {
-        const TypeDef* t = &type;
-        do
-            if( t->name() == name() )
+        while( type )
+            if( type->name() == name() )
                 return true;
             else
-                t = t->parent();
-        while( t );
+                type = type->parent();
         return false;
     }
 
-
-    // Return Type name string
     /**
-     * @brief
+     * @brief Return name of type
      *
-     * @return const std::string
+     * @return name of type
      */
     const std::string& name() const { return m_name; }
 
-    // Return parent Type or nullptr if has no parent
     /**
-     * @brief
+     * @brief Return parent TypeDef or nullptr if has no parent
      *
-     * @return const TypeDef
+     * @return const parent TypeDef or nullptr if has no parent
      */
     const TypeDef* parent() const { return m_parent; }
 
 private:
-    const std::string m_name; /**< TODO */
-    const TypeDef* m_parent; /**< TODO */
+    const std::string m_name; ///< Name of defined type
+    const TypeDef* m_parent;  ///< Pointer to parent type or nullptr if none
 };
 
 } // namespace MPO
