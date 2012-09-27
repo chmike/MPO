@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include <sys/time.h>
 
 #include "MPO.hpp"
 
@@ -8,7 +9,7 @@ using namespace std;
 using namespace MPO;
 
 
-// Serie of test to valide the MPO package.
+// Serie of test to validate the MPO package.
 
 
 // Define MsgA Message class
@@ -225,6 +226,7 @@ public:
     virtual const TypeDef& type() const { return Pong::Type(); }
     // Define the MyAction class type
     static const TypeDef m_type;
+
 };
 const TypeDef Pong::m_type( "Pong", &Action::Type() );
 
@@ -531,6 +533,44 @@ int main()
         cout << "   Unknown exception" << endl;
         exit(1);
     }
+
+
+    {
+        int nbr = 1000000;
+        cout << "Timing for " << nbr << " MPO signal ping pong : ";
+        cout.flush();
+        class Timer {
+            double m_start, m_stop;
+        public:
+            Timer() { start(); stop(); }
+            double getTime()
+            {
+                struct timeval t;
+                ::gettimeofday( &t, NULL );
+                return double(t.tv_sec) + double(t.tv_usec)/1000000.;
+            }
+
+            void start() { m_start = getTime(); }
+            void stop() { m_stop = getTime(); }
+            double getDelta() { return m_stop - m_start; }
+        } timer;
+
+        Ping* ping = new Ping("Ping");
+        Pong* pong = new Pong("Pong");
+        Link::connect( "Ping::output", "Pong::input");
+        Link::connect( "Pong::output", "Ping::input");
+
+        Ball::Ptr ball( new Ball() );
+        ping->start( ball, nbr );
+
+        timer.start();
+        while( Message::processNext() );
+        timer.stop();
+
+        cout << timer.getDelta() << " seconds " << endl;
+
+    }
+
 
 
 
